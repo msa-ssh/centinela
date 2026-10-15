@@ -1,0 +1,15 @@
+intervalo_minutos = 5
+timeout_segundos = 10
+dias_aviso_certificado = 14
+
+[[sitio]]
+nombre = "Google"
+url = "https://www.google.com"
+
+[[sitio]]
+nombre = "GitHub"
+url = "https://github.com"
+
+[[sitio]]
+nombre = "Web de prueba caída"
+url = "https://esto-no-existe.example"
