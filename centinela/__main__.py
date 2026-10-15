@@ -1,22 +1,11 @@
 #!/usr/bin/env python3
 """Centinela: vigila webs y avisa si algo falla."""
 import sys
-import time
 
 import requests
 
+from centinela.checks import revisar
 from centinela.config import TIMEOUT, cargar_config, leer_sitios
-
-
-def revisar(url):
-    """Comprueba una web. Devuelve (está_bien, detalle)."""
-    inicio = time.perf_counter()
-    try:
-        respuesta = requests.get(url, timeout=TIMEOUT)
-        ms = (time.perf_counter() - inicio) * 1000
-        return respuesta.ok, f"{respuesta.status_code} en {ms:.0f} ms"
-    except requests.RequestException as error:
-        return False, type(error).__name__
 
 
 def enviar_telegram(token, chat_id, texto):
