@@ -68,7 +68,8 @@ def main():
         ok, detalle = revisar(url)
         icono = "✅" if ok else "❌"
         print(f"{icono} {url}  ({detalle})")
-
+        if not ok:
+            enviar_telegram(token, chat_id, f"❌ {url} no responde ({detalle})")
 
 if __name__ == "__main__":
     main()
