@@ -1,9 +1,12 @@
 """Configuración de Centinela: credenciales y config.toml."""
+import logging
 import os
 import sys
 import tomllib
 
 from dotenv import load_dotenv
+
+log = logging.getLogger(__name__)
 
 TIMEOUT = 10  # segundos máximos de espera por web
 
@@ -15,10 +18,10 @@ def cargar_config():
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
     if not token:
-        print("Falta TELEGRAM_TOKEN en .env", file=sys.stderr)
+        log.error("Falta TELEGRAM_TOKEN en .env")
         sys.exit(1)
     if not chat_id:
-        print("Falta TELEGRAM_CHAT_ID en .env", file=sys.stderr)
+        log.error("Falta TELEGRAM_CHAT_ID en .env")
         sys.exit(1)
 
     return token, chat_id
@@ -30,8 +33,8 @@ def leer_config(ruta="config.toml"):
         with open(ruta, "rb") as archivo:
             return tomllib.load(archivo)
     except FileNotFoundError:
-        print(f"Falta {ruta}: cópielo de config.example.toml", file=sys.stderr)
+        log.error(f"Falta {ruta}: cópielo de config.example.toml")
         sys.exit(1)
     except tomllib.TOMLDecodeError as error:
-        print(f"{ruta} tiene un error de formato: {error}", file=sys.stderr)
+        log.error(f"{ruta} tiene un error de formato: {error}")
         sys.exit(1)

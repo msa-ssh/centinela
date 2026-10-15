@@ -1,9 +1,11 @@
 """Avisos de Centinela por Telegram."""
-import sys
+import logging
 
 import requests
 
 from centinela.config import TIMEOUT
+
+log = logging.getLogger(__name__)
 
 
 def enviar_telegram(token, chat_id, texto):
@@ -13,9 +15,9 @@ def enviar_telegram(token, chat_id, texto):
     try:
         respuesta = requests.post(url, data=datos, timeout=TIMEOUT)
     except requests.RequestException as error:
-        print(f"No se pudo enviar a Telegram: {type(error).__name__}", file=sys.stderr)
+        log.error(f"No se pudo enviar a Telegram: {type(error).__name__}")
         return False
     if not respuesta.ok:
-        print(f"Telegram respondió {respuesta.status_code}", file=sys.stderr)
+        log.error(f"Telegram respondió {respuesta.status_code}")
         return False
     return True

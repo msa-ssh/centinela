@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Centinela: vigila webs y avisa solo cuando algo cambia."""
+import logging
 import sys
 from datetime import datetime
 
@@ -9,8 +10,11 @@ from centinela.notify import enviar_telegram
 from centinela.rules import decidir_avisos
 from centinela.state import cargar_estado, guardar_estado
 
+log = logging.getLogger(__name__)
+
 
 def main():
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     token, chat_id = cargar_config()
     if "--prueba" in sys.argv:
         ok = enviar_telegram(token, chat_id, "Prueba de Centinela: funciona")
@@ -28,7 +32,10 @@ def main():
         dias = dias_certificado(url, timeout) if url.startswith("https://") else None
         icono = "✅" if ok else "❌"
         certificado = f", certificado: {dias} días" if dias is not None else ""
-        print(f"{icono} {nombre}  ({detalle}{certificado})")
+        if ok:
+            log.info(f"{icono} {nombre} ({detalle}{certificado})")
+        else:
+            log.warning(f"{icono} {nombre} ({detalle}{certificado})")
 
         avisos, nuevo_estado[url] = decidir_avisos(
             nombre, estado.get(url, {}), ok, detalle, dias, ahora, config

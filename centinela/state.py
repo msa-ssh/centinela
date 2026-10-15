@@ -1,7 +1,9 @@
 """Estado de Centinela entre ejecuciones: estado.json."""
 import json
-import sys
+import logging
 from pathlib import Path
+
+log = logging.getLogger(__name__)
 
 
 def cargar_estado(ruta="estado.json"):
@@ -11,7 +13,7 @@ def cargar_estado(ruta="estado.json"):
     except FileNotFoundError:
         return {}
     except json.JSONDecodeError:
-        print(f"{ruta} está dañado; se empieza de cero", file=sys.stderr)
+        log.warning(f"{ruta} está dañado; se empieza de cero")
         return {}
 
 
