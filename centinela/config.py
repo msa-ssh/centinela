@@ -1,7 +1,7 @@
-"""Configuración de Centinela: credenciales y lista de webs."""
+"""Configuración de Centinela: credenciales y config.toml."""
 import os
 import sys
-from pathlib import Path
+import tomllib
 
 from dotenv import load_dotenv
 
@@ -24,7 +24,14 @@ def cargar_config():
     return token, chat_id
 
 
-def leer_sitios(ruta="sitios.txt"):
-    """Devuelve las URLs del archivo, sin líneas vacías ni comentarios."""
-    lineas = Path(ruta).read_text().splitlines()
-    return [l.strip() for l in lineas if l.strip() and not l.startswith("#")]
+def leer_config(ruta="config.toml"):
+    """Devuelve config.toml como diccionario. Sale con código 1 si falta o está mal."""
+    try:
+        with open(ruta, "rb") as archivo:
+            return tomllib.load(archivo)
+    except FileNotFoundError:
+        print(f"Falta {ruta}: cópielo de config.example.toml", file=sys.stderr)
+        sys.exit(1)
+    except tomllib.TOMLDecodeError as error:
+        print(f"{ruta} tiene un error de formato: {error}", file=sys.stderr)
+        sys.exit(1)
