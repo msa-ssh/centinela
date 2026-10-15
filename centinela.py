@@ -61,6 +61,9 @@ def enviar_telegram(token, chat_id, texto):
 
 def main():
     token, chat_id = cargar_config()
+    if "--prueba" in sys.argv:
+        ok = enviar_telegram(token, chat_id, "Prueba de Centinela: funciona")
+        sys.exit(0 if ok else 1)
     for url in leer_sitios():
         ok, detalle = revisar(url)
         icono = "✅" if ok else "❌"
