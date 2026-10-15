@@ -25,9 +25,11 @@ def dias_certificado(url, timeout=TIMEOUT):
     host = urlparse(url).hostname
     contexto = ssl.create_default_context()
     try:
-        with socket.create_connection((host, 443), timeout=timeout) as conexion:
-            with contexto.wrap_socket(conexion, server_hostname=host) as tls:
-                certificado = tls.getpeercert()
+        with (
+            socket.create_connection((host, 443), timeout=timeout) as conexion,
+            contexto.wrap_socket(conexion, server_hostname=host) as tls,
+        ):
+            certificado = tls.getpeercert()
     except OSError:
         return None
     caduca = ssl.cert_time_to_seconds(certificado["notAfter"])

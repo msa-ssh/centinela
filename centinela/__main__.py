@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Centinela: vigila webs y avisa solo cuando algo cambia."""
 import logging
 import os
