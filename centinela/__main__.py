@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Centinela: vigila webs y avisa solo cuando algo cambia."""
 import logging
+import os
 import sys
 from datetime import datetime
 
@@ -13,8 +14,22 @@ from centinela.state import cargar_estado, guardar_estado
 log = logging.getLogger(__name__)
 
 
+PRIORIDAD_SYSLOG = {"DEBUG": 7, "INFO": 6, "WARNING": 4, "ERROR": 3, "CRITICAL": 2}
+
+
+class FormatoJournal(logging.Formatter):
+    def format(self, registro):
+        return f"<{PRIORIDAD_SYSLOG[registro.levelname]}>{super().format(registro)}"
+
+
 def main():
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    formato = "%(levelname)s %(name)s: %(message)s"
+    manejador = logging.StreamHandler()
+    if "JOURNAL_STREAM" in os.environ:
+        manejador.setFormatter(FormatoJournal(formato))
+    else:
+        manejador.setFormatter(logging.Formatter(formato))
+    logging.basicConfig(level=logging.INFO, handlers=[manejador])
     token, chat_id = cargar_config()
     if "--prueba" in sys.argv:
         ok = enviar_telegram(token, chat_id, "Prueba de Centinela: funciona")
