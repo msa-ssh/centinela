@@ -9,23 +9,23 @@ import requests
 from centinela.config import TIMEOUT
 
 
-def revisar(url):
+def revisar(url, timeout=TIMEOUT):
     """Comprueba una web. Devuelve (está_bien, detalle)."""
     inicio = time.perf_counter()
     try:
-        respuesta = requests.get(url, timeout=TIMEOUT)
+        respuesta = requests.get(url, timeout=timeout)
         ms = (time.perf_counter() - inicio) * 1000
         return respuesta.ok, f"{respuesta.status_code} en {ms:.0f} ms"
     except requests.RequestException as error:
         return False, type(error).__name__
 
 
-def dias_certificado(url):
+def dias_certificado(url, timeout=TIMEOUT):
     """Devuelve los días que faltan para que caduque el certificado, o None si no se pudo leer."""
     host = urlparse(url).hostname
     contexto = ssl.create_default_context()
     try:
-        with socket.create_connection((host, 443), timeout=TIMEOUT) as conexion:
+        with socket.create_connection((host, 443), timeout=timeout) as conexion:
             with contexto.wrap_socket(conexion, server_hostname=host) as tls:
                 certificado = tls.getpeercert()
     except OSError:
