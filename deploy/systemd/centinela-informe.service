@@ -1,0 +1,7 @@
+[Unit]
+Description=Centinela: informe semanal de disponibilidad
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/proyectos/centinela
+ExecStart=%h/proyectos/centinela/.venv/bin/python -m centinela --informe
