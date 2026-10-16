@@ -1,0 +1,12 @@
+services:
+  centinela:
+    build: .
+    env_file: .env
+    volumes:
+      - ./config.toml:/app/config.toml:ro
+      - datos:/datos
+    init: true
+    restart: unless-stopped
+
+volumes:
+  datos:
