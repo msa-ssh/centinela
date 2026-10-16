@@ -4,12 +4,13 @@ import os
 import sqlite3
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from centinela.checks import dias_certificado, revisar
 from centinela.config import cargar_config, leer_config
-from centinela.history import borrar_antiguos, guardar_resultados
+from centinela.history import borrar_antiguos, disponibilidad, guardar_resultados
 from centinela.notify import enviar_telegram
+from centinela.report import formatear_informe
 from centinela.rules import decidir_avisos
 from centinela.state import cargar_estado, guardar_estado
 
@@ -35,6 +36,10 @@ def main():
     token, chat_id = cargar_config()
     if "--prueba" in sys.argv:
         ok = enviar_telegram(token, chat_id, "Prueba de Centinela: funciona")
+        sys.exit(0 if ok else 1)
+
+    if "--informe" in sys.argv:
+        ok = enviar_informe(token, chat_id)
         sys.exit(0 if ok else 1)
 
     if "--bucle" in sys.argv:
@@ -79,6 +84,14 @@ def ronda(token, chat_id):
     except sqlite3.Error as error:
         log.error(f"No se pudo guardar el historial: {error}")
     return config
+
+
+def enviar_informe(token, chat_id, ahora=None):
+    """Envía por Telegram la disponibilidad de los últimos 7 días. Devuelve True si llegó."""
+    ahora = ahora or datetime.now()
+    desde = ahora - timedelta(days=7)
+    texto = formatear_informe(disponibilidad(desde, ahora), desde, ahora)
+    return enviar_telegram(token, chat_id, texto)
 
 
 if __name__ == "__main__":
