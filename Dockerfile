@@ -2,7 +2,8 @@ FROM python:3.14.4-slim-trixie
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    CENTINELA_ESTADO=/datos/estado.json
+    CENTINELA_ESTADO=/datos/estado.json \
+    CENTINELA_HISTORIAL=/datos/historial.db
 
 RUN useradd --create-home --uid 1000 centinela \
     && mkdir /datos \
