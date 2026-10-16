@@ -1,12 +1,14 @@
 """Centinela: vigila webs y avisa solo cuando algo cambia."""
 import logging
 import os
+import sqlite3
 import sys
 import time
 from datetime import datetime
 
 from centinela.checks import dias_certificado, revisar
 from centinela.config import cargar_config, leer_config
+from centinela.history import borrar_antiguos, guardar_resultados
 from centinela.notify import enviar_telegram
 from centinela.rules import decidir_avisos
 from centinela.state import cargar_estado, guardar_estado
@@ -48,11 +50,13 @@ def ronda(token, chat_id):
     timeout = config["timeout_segundos"]
     estado = cargar_estado()
     nuevo_estado = {}
+    resultados = []
     ahora = datetime.now()
 
     for sitio in config["sitio"]:
         nombre, url = sitio["nombre"], sitio["url"]
         ok, detalle = revisar(url, timeout)
+        resultados.append((url, nombre, ok))
         dias = dias_certificado(url, timeout) if url.startswith("https://") else None
         icono = "✅" if ok else "❌"
         certificado = f", certificado: {dias} días" if dias is not None else ""
@@ -68,6 +72,12 @@ def ronda(token, chat_id):
             enviar_telegram(token, chat_id, aviso)
 
     guardar_estado(nuevo_estado)
+
+    try:
+        guardar_resultados(resultados, ahora)
+        borrar_antiguos(config.get("dias_historial", 90), ahora)
+    except sqlite3.Error as error:
+        log.error(f"No se pudo guardar el historial: {error}")
     return config
 
 
