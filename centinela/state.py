@@ -3,12 +3,12 @@ import json
 import logging
 from pathlib import Path
 
-from centinela.config import RAIZ
+from centinela.config import RUTA_ESTADO
 
 log = logging.getLogger(__name__)
 
 
-def cargar_estado(ruta=RAIZ / "estado.json"):
+def cargar_estado(ruta=RUTA_ESTADO):
     """Devuelve el último estado guardado, o un diccionario vacío si no hay."""
     try:
         return json.loads(Path(ruta).read_text(encoding="utf-8"))
@@ -19,7 +19,7 @@ def cargar_estado(ruta=RAIZ / "estado.json"):
         return {}
 
 
-def guardar_estado(estado, ruta=RAIZ / "estado.json"):
+def guardar_estado(estado, ruta=RUTA_ESTADO):
     """Escribe el estado en estado.json."""
     texto = json.dumps(estado, indent=2, ensure_ascii=False)
     Path(ruta).write_text(texto + "\n", encoding="utf-8")
