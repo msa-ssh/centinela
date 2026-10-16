@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import centinela.__main__ as programa
-from centinela.report import formatear_informe
+from centinela.report import formatear_informe, toca_informe
 
 DESDE = datetime(2026, 10, 12, 9, 0)
 HASTA = datetime(2026, 10, 19, 9, 0)
@@ -52,3 +52,47 @@ def test_enviar_informe_usa_los_ultimos_7_dias(monkeypatch):
     assert programa.enviar_informe("token", "chat", HASTA) is True
     assert pedidos == [(DESDE, HASTA)]
     assert enviados == [formatear_informe([("Web", "https://web.example", 10, 10)], DESDE, HASTA)]
+
+
+def test_toca_el_lunes_a_las_9():
+    assert toca_informe(HASTA - timedelta(days=7), HASTA)
+
+
+def test_no_toca_dos_veces_la_misma_semana():
+    assert not toca_informe(HASTA, HASTA + timedelta(days=2))
+
+
+def test_no_toca_antes_de_las_9():
+    assert not toca_informe(DESDE, HASTA - timedelta(minutes=1))
+
+
+def test_toca_aunque_el_lunes_estuviera_apagado():
+    assert toca_informe(DESDE, HASTA + timedelta(days=1))
+
+
+def preparar_informe(monkeypatch, ultimo, llega=True):
+    marcados, enviados = [], []
+    monkeypatch.setattr(programa, "ultimo_informe", lambda: ultimo)
+    monkeypatch.setattr(programa, "marcar_informe", marcados.append)
+    monkeypatch.setattr(
+        programa, "enviar_informe", lambda token, chat_id, ahora: enviados.append(ahora) or llega
+    )
+    return marcados, enviados
+
+
+def test_la_primera_vez_solo_apunta_la_fecha(monkeypatch):
+    marcados, enviados = preparar_informe(monkeypatch, None)
+    programa.informe_si_toca("token", "chat", HASTA)
+    assert (marcados, enviados) == ([HASTA], [])
+
+
+def test_cuando_toca_envia_y_apunta(monkeypatch):
+    marcados, enviados = preparar_informe(monkeypatch, DESDE)
+    programa.informe_si_toca("token", "chat", HASTA)
+    assert (marcados, enviados) == ([HASTA], [HASTA])
+
+
+def test_si_telegram_falla_no_apunta_y_reintenta(monkeypatch):
+    marcados, enviados = preparar_informe(monkeypatch, DESDE, llega=False)
+    programa.informe_si_toca("token", "chat", HASTA)
+    assert (marcados, enviados) == ([], [HASTA])

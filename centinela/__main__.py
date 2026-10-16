@@ -8,9 +8,15 @@ from datetime import datetime, timedelta
 
 from centinela.checks import dias_certificado, revisar
 from centinela.config import cargar_config, leer_config
-from centinela.history import borrar_antiguos, disponibilidad, guardar_resultados
+from centinela.history import (
+    borrar_antiguos,
+    disponibilidad,
+    guardar_resultados,
+    marcar_informe,
+    ultimo_informe,
+)
 from centinela.notify import enviar_telegram
-from centinela.report import formatear_informe
+from centinela.report import formatear_informe, toca_informe
 from centinela.rules import decidir_avisos
 from centinela.state import cargar_estado, guardar_estado
 
@@ -45,6 +51,7 @@ def main():
     if "--bucle" in sys.argv:
         while True:
             config = ronda(token, chat_id)
+            informe_si_toca(token, chat_id)
             time.sleep(config["intervalo_minutos"] * 60)
     ronda(token, chat_id)
 
@@ -92,6 +99,18 @@ def enviar_informe(token, chat_id, ahora=None):
     desde = ahora - timedelta(days=7)
     texto = formatear_informe(disponibilidad(desde, ahora), desde, ahora)
     return enviar_telegram(token, chat_id, texto)
+
+
+def informe_si_toca(token, chat_id, ahora=None):
+    """En modo --bucle, envía el informe una vez por semana. La primera vez solo apunta la fecha."""
+    ahora = ahora or datetime.now()
+    try:
+        ultimo = ultimo_informe()
+        primera_vez = ultimo is None
+        if primera_vez or (toca_informe(ultimo, ahora) and enviar_informe(token, chat_id, ahora)):
+            marcar_informe(ahora)
+    except sqlite3.Error as error:
+        log.error(f"No se pudo preparar el informe: {error}")
 
 
 if __name__ == "__main__":

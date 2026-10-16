@@ -1,6 +1,12 @@
 from datetime import datetime, timedelta
 
-from centinela.history import borrar_antiguos, disponibilidad, guardar_resultados
+from centinela.history import (
+    borrar_antiguos,
+    disponibilidad,
+    guardar_resultados,
+    marcar_informe,
+    ultimo_informe,
+)
 
 LUNES = datetime(2026, 10, 12, 9, 0)
 SEMANA = timedelta(days=7)
@@ -41,3 +47,14 @@ def test_borra_las_filas_antiguas(tmp_path):
     assert disponibilidad(LUNES - timedelta(days=365), LUNES, ruta) == [
         ("A", "https://a.example", 1, 1)
     ]
+
+
+def test_sin_informes_devuelve_none(tmp_path):
+    assert ultimo_informe(tmp_path / "historial.db") is None
+
+
+def test_ultimo_informe_es_el_mas_reciente(tmp_path):
+    ruta = tmp_path / "historial.db"
+    marcar_informe(LUNES, ruta)
+    marcar_informe(LUNES + SEMANA, ruta)
+    assert ultimo_informe(ruta) == LUNES + SEMANA
