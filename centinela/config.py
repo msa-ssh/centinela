@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 log = logging.getLogger(__name__)
 RAIZ = Path(__file__).resolve().parent.parent
 RUTA_ESTADO = Path(os.getenv("CENTINELA_ESTADO", RAIZ / "estado.json"))
+RUTA_HISTORIAL = Path(os.getenv("CENTINELA_HISTORIAL", RAIZ / "historial.db"))
 
 TIMEOUT = 10  # segundos máximos de espera por web
 
