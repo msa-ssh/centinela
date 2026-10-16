@@ -2,6 +2,7 @@
 import logging
 import os
 import sys
+import time
 from datetime import datetime
 
 from centinela.checks import dias_certificado, revisar
@@ -34,6 +35,15 @@ def main():
         ok = enviar_telegram(token, chat_id, "Prueba de Centinela: funciona")
         sys.exit(0 if ok else 1)
 
+    if "--bucle" in sys.argv:
+        while True:
+            config = ronda(token, chat_id)
+            time.sleep(config["intervalo_minutos"] * 60)
+    ronda(token, chat_id)
+
+
+def ronda(token, chat_id):
+    """Revisa todas las webs una vez, avisa si hace falta y devuelve la configuración leída."""
     config = leer_config()
     timeout = config["timeout_segundos"]
     estado = cargar_estado()
@@ -58,6 +68,7 @@ def main():
             enviar_telegram(token, chat_id, aviso)
 
     guardar_estado(nuevo_estado)
+    return config
 
 
 if __name__ == "__main__":
