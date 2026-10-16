@@ -5,6 +5,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     CENTINELA_ESTADO=/datos/estado.json \
     CENTINELA_HISTORIAL=/datos/historial.db
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN useradd --create-home --uid 1000 centinela \
     && mkdir /datos \
     && chown centinela:centinela /datos
