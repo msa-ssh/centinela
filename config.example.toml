@@ -3,6 +3,7 @@ timeout_segundos = 10
 dias_aviso_certificado = 14
 horas_entre_avisos_certificado = 24
 horas_recordatorio_caida = 6
+dias_historial = 90
 
 [[sitio]]
 nombre = "Google"
