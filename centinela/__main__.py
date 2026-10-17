@@ -6,6 +6,8 @@ import sys
 import time
 from datetime import datetime, timedelta
 
+import psutil
+
 from centinela.checks import dias_certificado, revisar
 from centinela.config import cargar_config, leer_config
 from centinela.history import (
@@ -17,13 +19,15 @@ from centinela.history import (
 )
 from centinela.notify import enviar_telegram
 from centinela.report import formatear_informe, toca_informe
-from centinela.rules import decidir_avisos
+from centinela.rules import con_coma, decidir_avisos, decidir_avisos_recurso
 from centinela.state import cargar_estado, guardar_estado
+from centinela.system import medir
 
 log = logging.getLogger(__name__)
 
 
 PRIORIDAD_SYSLOG = {"DEBUG": 7, "INFO": 6, "WARNING": 4, "ERROR": 3, "CRITICAL": 2}
+LIMITES = {"disco": 90, "ram": 90, "carga": 100}
 
 
 class FormatoJournal(logging.Formatter):
@@ -83,6 +87,17 @@ def ronda(token, chat_id):
         for aviso in avisos:
             enviar_telegram(token, chat_id, aviso)
 
+    if "servidor" in config:
+        try:
+            avisos, estados = revisar_servidor(config["servidor"], estado, ahora, config)
+        except (OSError, psutil.Error) as error:
+            log.error(f"No se pudo revisar el servidor: {error}")
+            avisos = []
+            estados = {c: v for c, v in estado.items() if c.startswith("servidor:")}
+        nuevo_estado.update(estados)
+        for aviso in avisos:
+            enviar_telegram(token, chat_id, aviso)
+
     guardar_estado(nuevo_estado)
 
     try:
@@ -91,6 +106,28 @@ def ronda(token, chat_id):
     except sqlite3.Error as error:
         log.error(f"No se pudo guardar el historial: {error}")
     return config
+
+
+def revisar_servidor(servidor, estado, ahora, config):
+    """Mide disco, RAM y carga, escribe una línea en el log y devuelve (avisos, estados)."""
+    nombre = servidor.get("nombre", "Servidor")
+    avisos, estados, partes = [], {}, []
+    alto = False
+    for clave, tipo, etiqueta, valor in medir(servidor.get("discos", ["/"])):
+        limite = servidor.get(f"{tipo}_max", LIMITES[tipo])
+        alto = alto or valor > limite
+        partes.append(f"{etiqueta} {con_coma(valor)} %")
+        nuevos, estados[clave] = decidir_avisos_recurso(
+            nombre, etiqueta, estado.get(clave, {}), valor, limite, ahora, config
+        )
+        avisos.extend(nuevos)
+
+    linea = f"🖥️ {nombre}: {', '.join(partes)}"
+    if alto:
+        log.warning(linea)
+    else:
+        log.info(linea)
+    return avisos, estados
 
 
 def enviar_informe(token, chat_id, ahora=None):

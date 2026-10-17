@@ -17,3 +17,10 @@ url = "https://github.com"
 [[sitio]]
 nombre = "Web de prueba caída"
 url = "https://esto-no-existe.example"
+
+[servidor]
+nombre = "VM de pruebas"
+discos = ["/"]
+disco_max = 90
+ram_max = 90
+carga_max = 100
