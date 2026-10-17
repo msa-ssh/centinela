@@ -16,7 +16,9 @@ def preparar(monkeypatch):
     monkeypatch.setattr(programa, "leer_config", lambda: CONFIG)
     monkeypatch.setattr(programa, "cargar_estado", dict)
     monkeypatch.setattr(programa, "guardar_estado", lambda estado: None)
-    monkeypatch.setattr(programa, "revisar", lambda url, timeout: (False, "ConnectionError"))
+    monkeypatch.setattr(
+        programa, "revisar", lambda url, timeout, texto=None: (False, "ConnectionError")
+    )
     monkeypatch.setattr(
         programa, "enviar_telegram", lambda token, chat_id, texto: enviados.append(texto)
     )
@@ -47,3 +49,24 @@ def test_un_fallo_del_historial_no_impide_el_aviso(monkeypatch):
     programa.ronda("token", "chat")
 
     assert enviados == ["🔴 Caída: Web (ConnectionError)"]
+
+
+def test_ronda_pasa_el_texto_de_cada_web(monkeypatch):
+    preparar(monkeypatch)
+    sitios = [
+        {"nombre": "Tienda", "url": "http://tienda.example", "texto": "Añadir al carrito"},
+        {"nombre": "Blog", "url": "http://blog.example"},
+    ]
+    monkeypatch.setattr(programa, "leer_config", lambda: CONFIG | {"sitio": sitios})
+    monkeypatch.setattr(programa, "guardar_resultados", lambda resultados, momento: None)
+    textos = []
+
+    def revisar(url, timeout, texto=None):
+        textos.append(texto)
+        return True, "200 en 5 ms"
+
+    monkeypatch.setattr(programa, "revisar", revisar)
+
+    programa.ronda("token", "chat")
+
+    assert textos == ["Añadir al carrito", None]

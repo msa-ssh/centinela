@@ -8,6 +8,7 @@ dias_historial = 90
 [[sitio]]
 nombre = "Google"
 url = "https://www.google.com"
+texto = "Google"
 
 [[sitio]]
 nombre = "GitHub"

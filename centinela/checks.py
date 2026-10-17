@@ -9,12 +9,14 @@ import requests
 from centinela.config import TIMEOUT
 
 
-def revisar(url, timeout=TIMEOUT):
-    """Comprueba una web. Devuelve (está_bien, detalle)."""
+def revisar(url, timeout=TIMEOUT, texto=None):
+    """Comprueba una web y, si se indica, que contenga un texto. Devuelve (está_bien, detalle)."""
     inicio = time.perf_counter()
     try:
         respuesta = requests.get(url, timeout=timeout)
         ms = (time.perf_counter() - inicio) * 1000
+        if respuesta.ok and texto and texto not in respuesta.text:
+            return False, f"falta el texto «{texto}»"
         return respuesta.ok, f"{respuesta.status_code} en {ms:.0f} ms"
     except requests.RequestException as error:
         return False, type(error).__name__

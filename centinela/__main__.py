@@ -67,7 +67,7 @@ def ronda(token, chat_id):
 
     for sitio in config["sitio"]:
         nombre, url = sitio["nombre"], sitio["url"]
-        ok, detalle = revisar(url, timeout)
+        ok, detalle = revisar(url, timeout, sitio.get("texto"))
         resultados.append((url, nombre, ok))
         dias = dias_certificado(url, timeout) if url.startswith("https://") else None
         icono = "✅" if ok else "❌"
