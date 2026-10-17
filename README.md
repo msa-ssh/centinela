@@ -4,7 +4,7 @@
 
 Vigila tus webs y te avisa por Telegram antes de que tus clientes noten que algo falla.
 
-Centinela revisa cada pocos minutos que tus webs respondan y que su certificado HTTPS no esté a punto de caducar. Solo te escribe cuando algo cambia: cuando una web cae, cuando se recupera y, si sigue caída, con un recordatorio cada pocas horas. Y cada lunes te manda un informe con el porcentaje de tiempo que cada web estuvo disponible.
+Centinela revisa cada pocos minutos que tus webs respondan, que muestren lo que deben (por ejemplo, el botón "Añadir al carrito") y que su certificado HTTPS no esté a punto de caducar. También vigila el disco, la RAM y la carga del servidor donde se ejecuta. Solo te escribe cuando algo cambia: cuando una web cae, cuando se recupera y, si sigue caída, con un recordatorio cada pocas horas. Y cada lunes te manda un informe con el porcentaje de tiempo que cada web estuvo disponible.
 
 ## Cómo se ve un aviso
 
@@ -12,9 +12,12 @@ Centinela revisa cada pocos minutos que tus webs respondan y que su certificado 
 
 ```
 🔴 Caída: Mi tienda (ConnectionError)
+🔴 Caída: Mi tienda (falta el texto «Añadir al carrito»)
 🔴 Sigue caída: Mi tienda desde 2026-10-15T08:00:00 (ConnectionError)
 🟢 Recuperada: Mi tienda (estuvo caída 35 min)
 🟡 Certificado de Mi tienda: caduca en 9 días
+🟠 Disco / de Servidor web al 93,5 % (límite 90 %)
+🟢 Disco / de Servidor web vuelve al 71 %
 📊 Informe semanal (8 oct – 15 oct)
 ✅ Blog: 100 % (2016 de 2016 rondas)
 ✅ Mi tienda: 99,6 % (2009 de 2016 rondas)
@@ -42,6 +45,8 @@ docker compose logs -f
 ```
 
 El contenedor se ejecuta con un usuario sin privilegios, se reinicia solo y guarda su estado y su historial en un volumen de Docker. El informe semanal lo envía el propio contenedor cada lunes a las 9:00, en la zona horaria de `TZ`.
+
+Dentro de un contenedor, la RAM y la carga que se ven son las de la máquina anfitriona, y el disco `/` es el que usa Docker para sus datos. Para vigilar con precisión los discos de un servidor, usa la instalación con systemd.
 
 ## Alternativa con systemd
 
@@ -91,7 +96,35 @@ TZ=UTC
 | `horas_recordatorio_caida` | Horas entre recordatorios de una web caída (0 los desactiva) |
 | `dias_historial` | Días que se guardan en `historial.db` para el informe (90 si falta) |
 
-Cada web es un bloque `[[sitio]]` con `nombre` y `url`.
+Cada web es un bloque `[[sitio]]` con `nombre` y `url`. Con `texto`, además, la web cuenta como caída si responde pero su HTML no contiene ese texto (distingue mayúsculas; elige un texto que aparezca tal cual en el código fuente de la página):
+
+```toml
+[[sitio]]
+nombre = "Mi tienda"
+url = "https://mitienda.example"
+texto = "Añadir al carrito"
+```
+
+Para vigilar el servidor donde corre Centinela, añade al final una tabla `[servidor]`. Sin ella, no se mide nada:
+
+```toml
+[servidor]
+nombre = "Servidor web"
+discos = ["/"]
+disco_max = 90
+ram_max = 90
+carga_max = 100
+```
+
+| Clave | Qué hace |
+| --- | --- |
+| `nombre` | Nombre del servidor en los avisos |
+| `discos` | Rutas cuyo disco se vigila (`["/"]` si falta) |
+| `disco_max` | Porcentaje de disco usado a partir del cual avisa (90 si falta) |
+| `ram_max` | Porcentaje de RAM usada a partir del cual avisa (90 si falta) |
+| `carga_max` | Carga media de 5 minutos dividida entre los núcleos, en porcentaje (100 si falta) |
+
+Avisa al pasar el límite, recuerda cada `horas_recordatorio_caida` si sigue alto y avisa cuando vuelve a la normalidad. Cada revisión deja en el registro una línea como `🖥️ Servidor web: Disco / 46,5 %, RAM 40,9 %, Carga 6,1 %`.
 
 ## Uso
 
@@ -112,9 +145,9 @@ pytest
 
 ## Hoja de ruta
 
-- Vigilar disco, RAM y CPU de un servidor.
-- Comprobar que una página contiene un texto concreto.
 - Más canales de aviso: correo y Discord.
+- Vigilar varios servidores desde un solo Centinela.
+- Recursos del servidor en el informe semanal.
 - Zona horaria por web, para vigilar a clientes de varios países.
 - Página de estado pública.
 
