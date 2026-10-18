@@ -2,9 +2,9 @@
 
 [![CI](https://github.com/msa-ssh/centinela/actions/workflows/ci.yml/badge.svg)](https://github.com/msa-ssh/centinela/actions/workflows/ci.yml)
 
-Vigila tus webs y te avisa por Telegram antes de que tus clientes noten que algo falla.
+Vigila tus webs y te avisa por Telegram, correo o Discord antes de que tus clientes noten que algo falla.
 
-Centinela revisa cada pocos minutos que tus webs respondan, que muestren lo que deben (por ejemplo, el botón "Añadir al carrito") y que su certificado HTTPS no esté a punto de caducar. También vigila el disco, la RAM y la carga del servidor donde se ejecuta. Solo te escribe cuando algo cambia: cuando una web cae, cuando se recupera y, si sigue caída, con un recordatorio cada pocas horas. Y cada lunes te manda un informe con el porcentaje de tiempo que cada web estuvo disponible.
+Centinela revisa cada pocos minutos que tus webs respondan, que muestren lo que deben (por ejemplo, el botón "Añadir al carrito") y que su certificado HTTPS no esté a punto de caducar. También vigila el disco, la RAM y la carga del servidor donde se ejecuta. Solo te escribe cuando algo cambia: cuando una web cae, cuando se recupera y, si sigue caída, con un recordatorio cada pocas horas. Y cada lunes te manda un informe con el porcentaje de tiempo que cada web estuvo disponible. Cada web puede avisar a sus propios destinos, así que con un solo Centinela cada cliente recibe solo lo suyo, por el canal que prefiera.
 
 ## Cómo se ve un aviso
 
@@ -46,6 +46,8 @@ docker compose logs -f
 
 El contenedor se ejecuta con un usuario sin privilegios, se reinicia solo y guarda su estado y su historial en un volumen de Docker. El informe semanal lo envía el propio contenedor cada lunes a las 9:00, en la zona horaria de `TZ`.
 
+`compose.yaml` entrega `.env` al contenedor al arrancar (`env_file`): los secretos nunca se copian dentro de la imagen.
+
 Dentro de un contenedor, la RAM y la carga que se ven son las de la máquina anfitriona, y el disco `/` es el que usa Docker para sus datos. Para vigilar con precisión los discos de un servidor, usa la instalación con systemd.
 
 ## Alternativa con systemd
@@ -75,12 +77,17 @@ Los registros se leen con `journalctl --user -u centinela` y `journalctl --user 
 
 ## Configuración
 
-`.env` guarda las credenciales de Telegram y la zona horaria, y nunca se sube a Git:
+`.env` guarda las credenciales y la zona horaria, y nunca se sube a Git. Telegram es obligatorio; Discord y el correo, solo si los usas (ver [Canales de aviso](#canales-de-aviso)):
 
 ```
 TELEGRAM_TOKEN=123456:ABC...
 TELEGRAM_CHAT_ID=123456789
 TZ=UTC
+DISCORD_WEBHOOK_EQUIPO=https://discord.com/api/webhooks/...
+SMTP_SERVIDOR=smtp.gmail.com
+SMTP_PUERTO=587
+SMTP_USUARIO=centinela@example.com
+SMTP_CLAVE=contraseña-de-aplicación
 ```
 
 `TZ` es la zona horaria de quien recibe los avisos (por ejemplo `Europe/Madrid`; ver la [lista de zonas](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)). Distingue mayúsculas: si está mal escrita, se usa UTC sin avisar.
@@ -126,12 +133,52 @@ carga_max = 100
 
 Avisa al pasar el límite, recuerda cada `horas_recordatorio_caida` si sigue alto y avisa cuando vuelve a la normalidad. Cada revisión deja en el registro una línea como `🖥️ Servidor web: Disco / 46,5 %, RAM 40,9 %, Carga 6,1 %`.
 
+## Canales de aviso
+
+Sin más configuración, todo llega al chat de Telegram de `.env`, que es el canal `telegram`. Para avisar también por Discord, por correo o a otro chat de Telegram, define cada canal en `config.toml` con un nombre y elige a quién avisa cada web con `avisos`:
+
+```toml
+avisos = ["telegram"]
+
+[canales.discord_equipo]
+tipo = "discord"
+variable = "DISCORD_WEBHOOK_EQUIPO"
+
+[canales.correo_tienda]
+tipo = "correo"
+para = "dueno@mitienda.example"
+
+[canales.telegram_socio]
+tipo = "telegram"
+variable = "TELEGRAM_CHAT_ID_SOCIO"
+
+[[sitio]]
+nombre = "Mi tienda"
+url = "https://mitienda.example"
+avisos = ["telegram", "correo_tienda"]
+
+[servidor]
+nombre = "Servidor web"
+avisos = ["telegram", "discord_equipo"]
+```
+
+- `avisos` arriba del todo (antes de cualquier tabla) son los destinos por defecto: los de las webs sin lista propia y los del informe semanal. Si falta, es `["telegram"]`.
+- `avisos` dentro de un `[[sitio]]` o de `[servidor]` sustituye a la lista por defecto.
+- `variable` es el **nombre** de una línea de `.env`, nunca el secreto: la URL de un webhook de Discord funciona como una contraseña.
+- Un canal de `tipo = "telegram"` usa el mismo bot con otro `chat_id`, por ejemplo el grupo de un cliente.
+- El correo sale por SMTP con STARTTLS (puerto 587), con los datos `SMTP_*` de `.env`.
+- Si un canal está mal configurado, o una lista nombra uno que no existe, se registra un `ERROR` y el aviso llega igual: si no queda ningún destino válido, va a `telegram`. Un canal que falla no impide que los demás reciban el aviso.
+
+**Webhook de Discord:** en el servidor de Discord, editar el canal → Integraciones → Webhooks → Nuevo webhook → Copiar URL del webhook, y pegarla en `.env`.
+
+**Correo con Gmail:** usa una cuenta dedicada, activa la verificación en dos pasos (vale una app de autenticación) y crea una contraseña de aplicación en [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords). Esa contraseña, sin espacios, va en `SMTP_CLAVE`; nunca la contraseña de la cuenta.
+
 ## Uso
 
 ```bash
 python -m centinela            # una revisión
 python -m centinela --bucle    # revisa cada intervalo_minutos, sin fin
-python -m centinela --prueba   # envía un mensaje de prueba
+python -m centinela --prueba   # envía un mensaje de prueba por cada canal
 python -m centinela --informe  # envía ahora el informe de los últimos 7 días
 ```
 
@@ -145,7 +192,7 @@ pytest
 
 ## Hoja de ruta
 
-- Más canales de aviso: correo y Discord.
+- Avisos por WhatsApp con la API oficial de WhatsApp Business.
 - Vigilar varios servidores desde un solo Centinela.
 - Recursos del servidor en el informe semanal.
 - Zona horaria por web, para vigilar a clientes de varios países.
