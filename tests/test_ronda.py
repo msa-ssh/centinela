@@ -20,8 +20,13 @@ def preparar(monkeypatch):
     monkeypatch.setattr(
         programa, "revisar", lambda url, timeout, texto=None: (False, "ConnectionError")
     )
+
+    def telegram(texto):
+        enviados.append(texto)
+        return True
+
     monkeypatch.setattr(
-        programa, "enviar_telegram", lambda token, chat_id, texto: enviados.append(texto)
+        programa, "crear_canales", lambda config, token, chat_id: {"telegram": telegram}
     )
     monkeypatch.setattr(programa, "borrar_antiguos", lambda dias, ahora: None)
     return enviados
@@ -147,3 +152,71 @@ def test_un_fallo_al_medir_no_impide_el_aviso_de_la_web(monkeypatch):
 
     assert enviados == ["🔴 Caída: Web (ConnectionError)"]
     assert guardados["servidor:ram"] == anterior
+
+
+def canales_que_apuntan(monkeypatch, nombres):
+    recibidos = {nombre: [] for nombre in nombres}
+
+    def canal(nombre):
+        def enviar(texto):
+            recibidos[nombre].append(texto)
+            return True
+
+        return enviar
+
+    canales = {nombre: canal(nombre) for nombre in nombres}
+    monkeypatch.setattr(programa, "crear_canales", lambda config, token, chat_id: canales)
+    return recibidos
+
+
+def test_cada_web_avisa_solo_a_sus_destinos(monkeypatch):
+    preparar(monkeypatch)
+    recibidos = canales_que_apuntan(monkeypatch, ["telegram", "tienda"])
+    sitios = [
+        {"nombre": "Tienda", "url": "http://tienda.example", "avisos": ["tienda"]},
+        {"nombre": "Blog", "url": "http://blog.example"},
+    ]
+    monkeypatch.setattr(programa, "leer_config", lambda: CONFIG | {"sitio": sitios})
+    monkeypatch.setattr(programa, "guardar_resultados", lambda resultados, momento: None)
+
+    programa.ronda("token", "chat")
+
+    assert recibidos == {
+        "telegram": ["🔴 Caída: Blog (ConnectionError)"],
+        "tienda": ["🔴 Caída: Tienda (ConnectionError)"],
+    }
+
+
+def test_el_servidor_avisa_a_sus_destinos(monkeypatch):
+    preparar_servidor(monkeypatch, {"nombre": "VM", "avisos": ["equipo"]})
+    recibidos = canales_que_apuntan(monkeypatch, ["telegram", "equipo"])
+
+    programa.ronda("token", "chat")
+
+    assert recibidos == {
+        "telegram": ["🔴 Caída: Web (ConnectionError)"],
+        "equipo": ["🟠 Disco / de VM al 93,5 % (límite 90 %)"],
+    }
+
+
+def test_prueba_avisa_por_cada_canal(caplog):
+    enviados = []
+
+    def canal(nombre, llega):
+        def enviar(texto):
+            enviados.append(texto)
+            return llega
+
+        return enviar
+
+    canales = {"telegram": canal("telegram", True), "equipo": canal("equipo", False)}
+
+    with caplog.at_level(logging.INFO):
+        assert programa.probar_canales(canales) is False
+
+    assert enviados == [
+        "Prueba de Centinela por el canal telegram: funciona",
+        "Prueba de Centinela por el canal equipo: funciona",
+    ]
+    assert "✅ Canal telegram" in caplog.text
+    assert "❌ Canal equipo" in caplog.text

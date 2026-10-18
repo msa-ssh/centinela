@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 
 import psutil
 
+from centinela.channels import avisar, crear_canales, destinos
 from centinela.checks import dias_certificado, revisar
 from centinela.config import cargar_config, leer_config
 from centinela.history import (
@@ -17,7 +18,6 @@ from centinela.history import (
     marcar_informe,
     ultimo_informe,
 )
-from centinela.notify import enviar_telegram
 from centinela.report import formatear_informe, toca_informe
 from centinela.rules import con_coma, decidir_avisos, decidir_avisos_recurso
 from centinela.state import cargar_estado, guardar_estado
@@ -45,7 +45,7 @@ def main():
     logging.basicConfig(level=logging.INFO, handlers=[manejador])
     token, chat_id = cargar_config()
     if "--prueba" in sys.argv:
-        ok = enviar_telegram(token, chat_id, "Prueba de Centinela: funciona")
+        ok = probar_canales(crear_canales(leer_config(), token, chat_id))
         sys.exit(0 if ok else 1)
 
     if "--informe" in sys.argv:
@@ -64,6 +64,7 @@ def ronda(token, chat_id):
     """Revisa todas las webs una vez, avisa si hace falta y devuelve la configuración leída."""
     config = leer_config()
     timeout = config["timeout_segundos"]
+    canales = crear_canales(config, token, chat_id)
     estado = cargar_estado()
     nuevo_estado = {}
     resultados = []
@@ -85,7 +86,7 @@ def ronda(token, chat_id):
             nombre, estado.get(url, {}), ok, detalle, dias, ahora, config
         )
         for aviso in avisos:
-            enviar_telegram(token, chat_id, aviso)
+            avisar(canales, destinos(sitio, config), aviso)
 
     if "servidor" in config:
         try:
@@ -96,7 +97,7 @@ def ronda(token, chat_id):
             estados = {c: v for c, v in estado.items() if c.startswith("servidor:")}
         nuevo_estado.update(estados)
         for aviso in avisos:
-            enviar_telegram(token, chat_id, aviso)
+            avisar(canales, destinos(config["servidor"], config), aviso)
 
     guardar_estado(nuevo_estado)
 
@@ -130,12 +131,25 @@ def revisar_servidor(servidor, estado, ahora, config):
     return avisos, estados
 
 
+def probar_canales(canales):
+    """Envía un mensaje de prueba por cada canal. Devuelve True si llegó por todos."""
+    todos = True
+    for nombre, enviar in canales.items():
+        if enviar(f"Prueba de Centinela por el canal {nombre}: funciona"):
+            log.info(f"✅ Canal {nombre}")
+        else:
+            log.error(f"❌ Canal {nombre}")
+            todos = False
+    return todos
+
+
 def enviar_informe(token, chat_id, ahora=None):
-    """Envía por Telegram la disponibilidad de los últimos 7 días. Devuelve True si llegó."""
+    """Envía la disponibilidad de los últimos 7 días a los canales por defecto."""
     ahora = ahora or datetime.now()
     desde = ahora - timedelta(days=7)
     texto = formatear_informe(disponibilidad(desde, ahora), desde, ahora)
-    return enviar_telegram(token, chat_id, texto)
+    config = leer_config()
+    return avisar(crear_canales(config, token, chat_id), destinos({}, config), texto)
 
 
 def informe_si_toca(token, chat_id, ahora=None):

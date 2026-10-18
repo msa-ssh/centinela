@@ -44,9 +44,14 @@ def test_enviar_informe_usa_los_ultimos_7_dias(monkeypatch):
         pedidos.append((desde, hasta))
         return [("Web", "https://web.example", 10, 10)]
 
+    def equipo(texto):
+        enviados.append(texto)
+        return True
+
     monkeypatch.setattr(programa, "disponibilidad", disponibilidad_falsa)
+    monkeypatch.setattr(programa, "leer_config", lambda: {"avisos": ["equipo"]})
     monkeypatch.setattr(
-        programa, "enviar_telegram", lambda token, chat_id, texto: enviados.append(texto) or True
+        programa, "crear_canales", lambda config, token, chat_id: {"telegram": None, "equipo": equipo}
     )
 
     assert programa.enviar_informe("token", "chat", HASTA) is True
