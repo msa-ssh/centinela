@@ -42,3 +42,26 @@ def leer_config(ruta=RAIZ / "config.toml"):
     except tomllib.TOMLDecodeError as error:
         log.error(f"{ruta} tiene un error de formato: {error}")
         sys.exit(1)
+
+
+VARIABLES_SMTP = {
+    "servidor": "SMTP_SERVIDOR",
+    "puerto": "SMTP_PUERTO",
+    "usuario": "SMTP_USUARIO",
+    "clave": "SMTP_CLAVE",
+}
+
+
+def cargar_smtp():
+    """Lee los datos del servidor de correo del .env. Devuelve None si falta alguno."""
+    smtp = {clave: os.getenv(variable) for clave, variable in VARIABLES_SMTP.items()}
+    faltan = [VARIABLES_SMTP[clave] for clave, valor in smtp.items() if not valor]
+    if faltan:
+        log.error(f"Faltan en .env: {', '.join(faltan)}")
+        return None
+    try:
+        smtp["puerto"] = int(smtp["puerto"])
+    except ValueError:
+        log.error("SMTP_PUERTO en .env debe ser un número, por ejemplo 587")
+        return None
+    return smtp

@@ -1,5 +1,8 @@
-"""Avisos de Centinela por Telegram y Discord."""
+"""Avisos de Centinela por Telegram, Discord y correo."""
 import logging
+import smtplib
+import ssl
+from email.message import EmailMessage
 
 import requests
 
@@ -34,5 +37,24 @@ def enviar_discord(webhook, texto):
         return False
     if not respuesta.ok:
         log.error(f"Discord respondió {respuesta.status_code}")
+        return False
+    return True
+
+
+def enviar_correo(smtp, para, texto):
+    """Envía un correo cifrado con STARTTLS. Devuelve True si el servidor lo aceptó."""
+    mensaje = EmailMessage()
+    mensaje["Subject"] = f"Centinela: {texto.splitlines()[0]}"
+    mensaje["From"] = smtp["usuario"]
+    mensaje["To"] = para
+    mensaje.set_content(texto)
+    contexto = ssl.create_default_context()
+    try:
+        with smtplib.SMTP(smtp["servidor"], smtp["puerto"], timeout=TIMEOUT) as conexion:
+            conexion.starttls(context=contexto)
+            conexion.login(smtp["usuario"], smtp["clave"])
+            conexion.send_message(mensaje)
+    except OSError as error:
+        log.error(f"No se pudo enviar el correo: {type(error).__name__}")
         return False
     return True
