@@ -4,6 +4,15 @@ dias_aviso_certificado = 14
 horas_entre_avisos_certificado = 24
 horas_recordatorio_caida = 6
 dias_historial = 90
+# avisos = ["telegram"]
+
+# [canales.discord_equipo]
+# tipo = "discord"
+# variable = "DISCORD_WEBHOOK_EQUIPO"
+
+# [canales.correo_tienda]
+# tipo = "correo"
+# para = "dueno@tienda.example"
 
 [[sitio]]
 nombre = "Google"
@@ -13,6 +22,7 @@ texto = "Google"
 [[sitio]]
 nombre = "GitHub"
 url = "https://github.com"
+# avisos = ["telegram", "discord_equipo"]
 
 [[sitio]]
 nombre = "Web de prueba caída"
