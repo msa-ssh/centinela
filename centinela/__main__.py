@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 
 import psutil
 
+from centinela import __version__
 from centinela.channels import avisar, crear_canales, destinos
 from centinela.checks import dias_certificado, revisar
 from centinela.config import cargar_config, leer_config
@@ -39,6 +40,10 @@ class FormatoJournal(logging.Formatter):
 
 
 def main():
+    if "--version" in sys.argv:
+        print(f"Centinela {__version__}")
+        return
+
     formato = "%(levelname)s %(name)s: %(message)s"
     manejador = logging.StreamHandler()
     if "JOURNAL_STREAM" in os.environ:
