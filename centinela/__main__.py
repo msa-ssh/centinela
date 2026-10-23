@@ -14,6 +14,7 @@ from centinela.config import cargar_config, leer_config
 from centinela.history import (
     borrar_antiguos,
     disponibilidad,
+    guardar_recursos,
     guardar_resultados,
     marcar_informe,
     ultimo_informe,
@@ -88,9 +89,10 @@ def ronda(token, chat_id):
         for aviso in avisos:
             avisar(canales, destinos(sitio, config), aviso)
 
+    medidas = []
     if "servidor" in config:
         try:
-            avisos, estados = revisar_servidor(config["servidor"], estado, ahora, config)
+            avisos, estados, medidas = revisar_servidor(config["servidor"], estado, ahora, config)
         except (OSError, psutil.Error) as error:
             log.error(f"No se pudo revisar el servidor: {error}")
             avisos = []
@@ -103,6 +105,8 @@ def ronda(token, chat_id):
 
     try:
         guardar_resultados(resultados, ahora)
+        if medidas:
+            guardar_recursos(medidas, ahora)
         borrar_antiguos(config.get("dias_historial", 90), ahora)
     except sqlite3.Error as error:
         log.error(f"No se pudo guardar el historial: {error}")
@@ -110,14 +114,15 @@ def ronda(token, chat_id):
 
 
 def revisar_servidor(servidor, estado, ahora, config):
-    """Mide disco, RAM y carga, escribe una línea en el log y devuelve (avisos, estados)."""
+    """Mide disco, RAM y carga, escribe una línea en el log y devuelve (avisos, estados, medidas)."""
     nombre = servidor.get("nombre", "Servidor")
-    avisos, estados, partes = [], {}, []
+    avisos, estados, partes, medidas = [], {}, [], []
     alto = False
     for clave, tipo, etiqueta, valor in medir(servidor.get("discos", ["/"])):
         limite = servidor.get(f"{tipo}_max", LIMITES[tipo])
         alto = alto or valor > limite
         partes.append(f"{etiqueta} {con_coma(valor)} %")
+        medidas.append((clave, etiqueta, valor, limite))
         nuevos, estados[clave] = decidir_avisos_recurso(
             nombre, etiqueta, estado.get(clave, {}), valor, limite, ahora, config
         )
@@ -128,7 +133,7 @@ def revisar_servidor(servidor, estado, ahora, config):
         log.warning(linea)
     else:
         log.info(linea)
-    return avisos, estados
+    return avisos, estados, medidas
 
 
 def probar_canales(canales):

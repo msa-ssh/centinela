@@ -29,6 +29,7 @@ def preparar(monkeypatch):
         programa, "crear_canales", lambda config, token, chat_id: {"telegram": telegram}
     )
     monkeypatch.setattr(programa, "borrar_antiguos", lambda dias, ahora: None)
+    monkeypatch.setattr(programa, "guardar_recursos", lambda medidas, momento: None)
     return enviados
 
 
@@ -152,6 +153,65 @@ def test_un_fallo_al_medir_no_impide_el_aviso_de_la_web(monkeypatch):
 
     assert enviados == ["🔴 Caída: Web (ConnectionError)"]
     assert guardados["servidor:ram"] == anterior
+
+
+def test_ronda_guarda_los_recursos_con_su_limite(monkeypatch):
+    preparar_servidor(monkeypatch, {"nombre": "VM", "ram_max": 80})
+    recursos = []
+    monkeypatch.setattr(
+        programa, "guardar_recursos", lambda medidas, momento: recursos.extend(medidas)
+    )
+
+    programa.ronda("token", "chat")
+
+    assert recursos == [
+        ("servidor:disco:/", "Disco /", 93.5, 90),
+        ("servidor:ram", "RAM", 40.0, 80),
+        ("servidor:carga", "Carga", 10.0, 100),
+    ]
+
+
+def test_sin_servidor_no_guarda_recursos(monkeypatch):
+    preparar(monkeypatch)
+    monkeypatch.setattr(programa, "guardar_resultados", lambda resultados, momento: None)
+    llamadas = []
+    monkeypatch.setattr(programa, "guardar_recursos", lambda medidas, momento: llamadas.append(1))
+
+    programa.ronda("token", "chat")
+
+    assert llamadas == []
+
+
+def test_si_medir_falla_no_guarda_recursos(monkeypatch):
+    preparar_servidor(monkeypatch, {"nombre": "VM"})
+    llamadas = []
+    monkeypatch.setattr(programa, "guardar_recursos", lambda medidas, momento: llamadas.append(1))
+
+    def falla(discos):
+        raise OSError("no se puede leer el disco")
+
+    monkeypatch.setattr(programa, "medir", falla)
+
+    programa.ronda("token", "chat")
+
+    assert llamadas == []
+
+
+def test_un_fallo_al_guardar_recursos_no_impide_los_avisos(monkeypatch, caplog):
+    enviados, _ = preparar_servidor(monkeypatch, {"nombre": "VM"})
+
+    def falla(medidas, momento):
+        raise sqlite3.OperationalError("database is locked")
+
+    monkeypatch.setattr(programa, "guardar_recursos", falla)
+
+    programa.ronda("token", "chat")
+
+    assert enviados == [
+        "🔴 Caída: Web (ConnectionError)",
+        "🟠 Disco / de VM al 93,5 % (límite 90 %)",
+    ]
+    assert "No se pudo guardar el historial: database is locked" in caplog.text
 
 
 def canales_que_apuntan(monkeypatch, nombres):
