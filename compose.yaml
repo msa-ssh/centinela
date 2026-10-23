@@ -7,6 +7,16 @@ services:
       - datos:/datos
     init: true
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    pids_limit: 64
+    cpus: 0.5
 
 volumes:
   datos:

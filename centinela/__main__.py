@@ -11,7 +11,7 @@ import psutil
 from centinela import __version__
 from centinela.channels import avisar, crear_canales, destinos
 from centinela.checks import dias_certificado, revisar
-from centinela.config import cargar_config, leer_config
+from centinela.config import RUTA_ESTADO, cargar_config, leer_config
 from centinela.history import (
     borrar_antiguos,
     disponibilidad,
@@ -53,6 +53,9 @@ def main():
     logging.basicConfig(level=logging.INFO, handlers=[manejador])
     if "--comprobar" in sys.argv:
         sys.exit(0 if comprobar_instalacion() else 1)
+
+    if "--salud" in sys.argv:
+        sys.exit(0 if salud() else 1)
 
     token, chat_id = cargar_config()
     if "--prueba" in sys.argv:
@@ -144,6 +147,23 @@ def revisar_servidor(servidor, estado, ahora, config):
     else:
         log.info(linea)
     return avisos, estados, medidas
+
+
+def salud(ahora=None, ruta=RUTA_ESTADO):
+    """True si la última ronda guardó estado.json hace menos de tres intervalos."""
+    try:
+        modificado = ruta.stat().st_mtime
+    except FileNotFoundError:
+        log.error("Todavía no se ha guardado ninguna ronda")
+        return False
+    ahora = ahora or time.time()
+    minutos = (ahora - modificado) / 60
+    limite = leer_config()["intervalo_minutos"] * 3
+    if minutos > limite:
+        log.error(f"La última ronda fue hace {minutos:.0f} min (límite {limite} min)")
+        return False
+    log.info(f"La última ronda fue hace {minutos:.0f} min")
+    return True
 
 
 def probar_canales(canales):

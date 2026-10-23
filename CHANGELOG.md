@@ -8,10 +8,13 @@ Todos los cambios importantes de Centinela, de la versión más nueva a la más 
 
 - `--comprobar` revisa `config.toml` y `.env` sin enviar nada: claves desconocidas (con la más parecida como pista), valores fuera de rango, URLs, canales inexistentes, variables que faltan y permisos de los archivos. Nunca muestra un secreto.
 - `--version` y este archivo de cambios.
+- `--salud` y un `HEALTHCHECK` en la imagen: `docker compose ps` muestra `healthy` si la última ronda fue reciente.
 
 ### Cambiado
 
 - Los ejemplos de configuración usan `TZ=UTC` y direcciones `example.com`.
+- El contenedor se ejecuta con el sistema de archivos de solo lectura, sin capacidades de Linux, sin poder ganar privilegios y con límites de memoria, CPU y procesos.
+- La imagen base se fija por su resumen `sha256`, además de por su etiqueta.
 
 ## [0.9.0] - 2026-10-23
 
