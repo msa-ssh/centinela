@@ -14,7 +14,7 @@ OBLIGATORIAS = {
     "timeout_segundos": (1, 120),
     "dias_aviso_certificado": (1, 365),
     "horas_entre_avisos_certificado": (1, 720),
-    "horas_recordatorio_caida": (1, 720),
+    "horas_recordatorio_caida": (0, 720),
 }
 OPCIONALES = {"dias_historial": (8, 3650)}
 CLAVES_GENERALES = {*OBLIGATORIAS, *OPCIONALES, "avisos", "canales", "sitio", "servidor"}

@@ -49,6 +49,10 @@ def test_valores_fuera_de_rango_o_que_no_son_numeros():
     ]
 
 
+def test_cero_recordatorios_es_valido():
+    assert comprobar_config(config_valida(horas_recordatorio_caida=0), ENTORNO) == []
+
+
 def test_url_sin_http_y_sin_sitios():
     config = config_valida(sitio=[{"nombre": "Tienda", "url": "tienda.example"}])
     assert comprobar_config(config, ENTORNO) == [
