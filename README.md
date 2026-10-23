@@ -29,28 +29,53 @@ Centinela revisa cada pocos minutos que tus webs respondan, que muestren lo que 
 
 El porcentaje se redondea hacia abajo: una web con un solo fallo en la semana nunca aparece al 100 %.
 
-## Instalación con Docker
+## Empieza en 5 minutos
 
-Necesitas Docker con el plugin `compose` y un bot de Telegram (créalo con [@BotFather](https://t.me/BotFather)).
+Necesitas un Linux con Docker y su plugin `compose`, y un bot de Telegram: créalo con [@BotFather](https://t.me/BotFather), que te dará su token, y escríbele cualquier mensaje desde tu cuenta.
+
+**1. Descarga Centinela y prepara la configuración:**
 
 ```bash
 git clone https://github.com/msa-ssh/centinela.git
 cd centinela
 cp .env.example .env
 cp config.example.toml config.toml
-chmod 600 .env
+chmod 600 .env config.toml
 ```
 
-Rellena `.env` y `config.toml` (ver [Configuración](#configuración)) y arranca:
+`chmod 600` hace que solo tu usuario pueda leer los dos archivos: `.env` guarda los secretos y `config.toml` las webs y los correos de tus clientes.
+
+**2. Averigua tu `chat_id`.** `read -rs` guarda el token sin mostrarlo ni dejarlo en el historial de la terminal:
 
 ```bash
-docker compose up -d
-docker compose logs -f
+read -rs TELEGRAM_TOKEN
+curl -s "https://api.telegram.org/bot$TELEGRAM_TOKEN/getUpdates" | grep -o '"chat":{"id":-\?[0-9]*'
+unset TELEGRAM_TOKEN
 ```
 
-El contenedor se ejecuta con un usuario sin privilegios, se reinicia solo y guarda su estado y su historial en un volumen de Docker. El informe semanal lo envía el propio contenedor cada lunes a las 9:00, en la zona horaria de `TZ`.
+El número que sale tras `"id":` es tu `chat_id`.
 
-`compose.yaml` entrega `.env` al contenedor al arrancar (`env_file`): los secretos nunca se copian dentro de la imagen.
+**3. Rellena `.env`** con el token, el `chat_id` y tu zona horaria (por ejemplo `TZ=Europe/Madrid`). Las líneas de Discord y del correo solo hacen falta si usas esos canales.
+
+**4. Pon tus webs en `config.toml`:** cambia los bloques `[[sitio]]` por los tuyos y borra el de `esto-no-existe.example`, que está ahí para ver cómo es un aviso de caída.
+
+**5. Comprueba, prueba y arranca:**
+
+```bash
+docker compose run --rm centinela python -m centinela --comprobar
+docker compose run --rm centinela python -m centinela --prueba
+docker compose up -d
+```
+
+`--comprobar` revisa la configuración sin enviar nada y te dice qué corregir; `--prueba` te manda un mensaje por cada canal. A los pocos minutos, `docker compose ps` debe mostrar el contenedor como `(healthy)`.
+
+### Qué hace el contenedor
+
+- Revisa tus webs cada `intervalo_minutos` y envía el informe semanal cada lunes a las 9:00, en la zona horaria de `TZ`.
+- Guarda su estado y su historial en el volumen `datos`; el resto de su sistema de archivos es de solo lectura.
+- Se ejecuta con un usuario sin privilegios (uid 1000), sin capacidades de Linux, sin poder ganar privilegios y con límites de memoria, CPU y procesos. Si tu usuario no es el 1000 (`id -u`), el contenedor no podrá leer un `config.toml` con permisos `600`: dale permisos `644`.
+- Recibe `.env` al arrancar (`env_file`): los secretos nunca se copian dentro de la imagen.
+- Su `HEALTHCHECK` (`--salud`) comprueba cada minuto que la última ronda fue reciente.
 
 Dentro de un contenedor, la RAM y la carga que se ven son las de la máquina anfitriona, y el disco `/` es el que usa Docker para sus datos. Para vigilar con precisión los discos de un servidor, usa la instalación con systemd.
 
@@ -63,7 +88,8 @@ git clone https://github.com/msa-ssh/centinela.git ~/proyectos/centinela
 cd ~/proyectos/centinela
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-cp .env.example .env && cp config.example.toml config.toml && chmod 600 .env
+cp .env.example .env && cp config.example.toml config.toml && chmod 600 .env config.toml
+.venv/bin/python -m centinela --comprobar
 .venv/bin/python -m centinela --prueba
 ```
 
@@ -104,7 +130,7 @@ SMTP_CLAVE=contraseña-de-aplicación
 | `timeout_segundos` | Tiempo máximo de espera por web |
 | `dias_aviso_certificado` | Avisa si el certificado caduca en menos días |
 | `horas_entre_avisos_certificado` | Horas entre avisos del mismo certificado |
-| `horas_recordatorio_caida` | Horas entre recordatorios de una web caída (0 los desactiva) |
+| `horas_recordatorio_caida` | Horas entre recordatorios de una web caída o un recurso alto (0 los desactiva) |
 | `dias_historial` | Días que se guardan en `historial.db` (webs y recursos del servidor) para el informe (90 si falta) |
 
 Cada web es un bloque `[[sitio]]` con `nombre` y `url`. Con `texto`, además, la web cuenta como caída si responde pero su HTML no contiene ese texto (distingue mayúsculas; elige un texto que aparezca tal cual en el código fuente de la página):
@@ -184,7 +210,12 @@ python -m centinela            # una revisión
 python -m centinela --bucle    # revisa cada intervalo_minutos, sin fin
 python -m centinela --prueba   # envía un mensaje de prueba por cada canal
 python -m centinela --informe  # envía ahora el informe de los últimos 7 días
+python -m centinela --comprobar  # revisa config.toml y .env sin enviar nada
+python -m centinela --salud    # código 0 si la última ronda fue reciente
+python -m centinela --version
 ```
+
+Los cambios de cada versión están en [CHANGELOG.md](CHANGELOG.md).
 
 ## Desarrollo
 
