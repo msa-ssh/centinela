@@ -1,6 +1,7 @@
 """Comprobación de config.toml y .env antes de usarlos, sin enviar nada ni mostrar secretos."""
 import logging
 import os
+import re
 from difflib import get_close_matches
 
 from dotenv import load_dotenv
@@ -22,6 +23,9 @@ CLAVES_SITIO = {"nombre", "url", "texto", "avisos"}
 CLAVES_SERVIDOR = {"nombre", "discos", "disco_max", "ram_max", "carga_max", "avisos"}
 LIMITES_SERVIDOR = {"disco_max": (1, 100), "ram_max": (1, 100), "carga_max": (1, 1000)}
 TIPOS_CANAL = {"telegram", "discord", "correo"}
+TOKEN_TELEGRAM = re.compile(r"\d+:[\w-]{30,}")
+CHAT_ID = re.compile(r"-?\d+")
+WEBHOOK_DISCORD = re.compile(r"https://(discord|discordapp)\.com/api/webhooks/\d+/[\w-]+")
 
 
 def claves_desconocidas(tabla, permitidas, donde):
@@ -62,10 +66,13 @@ def comprobar_canal(nombre, canal, entorno):
         problemas.extend(f"{donde}: falta {variable} en .env" for variable in faltan)
         return problemas
     variable = canal.get("variable")
+    forma = CHAT_ID if tipo == "telegram" else WEBHOOK_DISCORD
     if not variable:
         problemas.append(f"{donde}: falta la clave variable")
     elif not entorno.get(variable):
         problemas.append(f"{donde}: falta {variable} en .env")
+    elif not forma.fullmatch(entorno[variable]):
+        problemas.append(f"{donde}: {variable} en .env no tiene el formato esperado (¿sigue el valor de ejemplo?)")
     return problemas
 
 
@@ -80,9 +87,11 @@ def comprobar_config(config, entorno):
     for clave, (minimo, maximo) in OPCIONALES.items():
         if clave in config:
             problemas += fuera_de_rango(config[clave], minimo, maximo, clave)
-    for variable in ("TELEGRAM_TOKEN", "TELEGRAM_CHAT_ID"):
+    for variable, forma in (("TELEGRAM_TOKEN", TOKEN_TELEGRAM), ("TELEGRAM_CHAT_ID", CHAT_ID)):
         if not entorno.get(variable):
             problemas.append(f"Falta {variable} en .env")
+        elif not forma.fullmatch(entorno[variable]):
+            problemas.append(f"{variable} en .env no tiene el formato esperado (¿sigue el valor de ejemplo?)")
 
     canales = config.get("canales", {})
     for nombre, canal in canales.items():

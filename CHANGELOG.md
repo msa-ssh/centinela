@@ -14,6 +14,7 @@ Todos los cambios importantes de Centinela, de la versión más nueva a la más 
 ### Cambiado
 
 - Los ejemplos de configuración usan `TZ=UTC` y direcciones `example.com`.
+- Con systemd, los archivos que crea Centinela (`estado.json`, `historial.db`) solo los puede leer su dueño (`UMask=0077`).
 - El contenedor se ejecuta con el sistema de archivos de solo lectura, sin capacidades de Linux, sin poder ganar privilegios y con límites de memoria, CPU y procesos.
 - La imagen base se fija por su resumen `sha256`, además de por su etiqueta.
 - El CI solo tiene permiso de lectura, usa acciones fijadas por el hash de su commit y comprueba que la imagen de Docker se construye.

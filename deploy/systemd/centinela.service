@@ -3,5 +3,6 @@ Description=Centinela: revisión de webs
 
 [Service]
 Type=oneshot
+UMask=0077
 WorkingDirectory=%h/proyectos/centinela
 ExecStart=%h/proyectos/centinela/.venv/bin/python -m centinela

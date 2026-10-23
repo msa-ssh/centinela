@@ -5,7 +5,9 @@ from centinela import validate
 from centinela.config import leer_config
 from centinela.validate import comprobar_config, comprobar_permisos
 
-ENTORNO = {"TELEGRAM_TOKEN": "token-secreto", "TELEGRAM_CHAT_ID": "123"}
+TOKEN = "123456:" + "A" * 35
+WEBHOOK = "https://discord.com/api/webhooks/123/token-del-webhook"
+ENTORNO = {"TELEGRAM_TOKEN": TOKEN, "TELEGRAM_CHAT_ID": "123"}
 
 
 def config_valida(**cambios):
@@ -99,6 +101,43 @@ def test_faltan_variables_sin_mostrar_secretos():
     assert not any("secret" in problema for problema in problemas)
 
 
+def test_los_valores_de_ejemplo_no_pasan():
+    entorno = {
+        "TELEGRAM_TOKEN": "su-token-nuevo",
+        "TELEGRAM_CHAT_ID": "su-chat-id",
+        "DISCORD_WEBHOOK_EQUIPO": "https://discord.com/api/webhooks/su-id/su-token",
+        "TELEGRAM_CHAT_ID_SOCIO": "su-chat-id",
+    }
+    config = config_valida(
+        canales={
+            "equipo": {"tipo": "discord", "variable": "DISCORD_WEBHOOK_EQUIPO"},
+            "socio": {"tipo": "telegram", "variable": "TELEGRAM_CHAT_ID_SOCIO"},
+        }
+    )
+
+    problemas = comprobar_config(config, entorno)
+
+    assert problemas == [
+        "TELEGRAM_TOKEN en .env no tiene el formato esperado (¿sigue el valor de ejemplo?)",
+        "TELEGRAM_CHAT_ID en .env no tiene el formato esperado (¿sigue el valor de ejemplo?)",
+        "[canales.equipo]: DISCORD_WEBHOOK_EQUIPO en .env no tiene el formato esperado (¿sigue el valor de ejemplo?)",
+        "[canales.socio]: TELEGRAM_CHAT_ID_SOCIO en .env no tiene el formato esperado (¿sigue el valor de ejemplo?)",
+    ]
+    assert not any("su-token" in problema for problema in problemas)
+
+
+def test_valores_con_formato_correcto():
+    entorno = ENTORNO | {"DISCORD_WEBHOOK_EQUIPO": WEBHOOK, "TELEGRAM_CHAT_ID_SOCIO": "-1001234"}
+    config = config_valida(
+        canales={
+            "equipo": {"tipo": "discord", "variable": "DISCORD_WEBHOOK_EQUIPO"},
+            "socio": {"tipo": "telegram", "variable": "TELEGRAM_CHAT_ID_SOCIO"},
+        }
+    )
+
+    assert comprobar_config(config, entorno) == []
+
+
 def test_falta_el_token_de_telegram():
     assert comprobar_config(config_valida(), {"TELEGRAM_CHAT_ID": "123"}) == [
         "Falta TELEGRAM_TOKEN en .env"
@@ -125,18 +164,18 @@ def test_sin_archivo_no_hay_problema_de_permisos(tmp_path):
 def test_comprobar_instalacion_escribe_cada_problema(monkeypatch, tmp_path, caplog):
     monkeypatch.setattr(validate, "RAIZ", tmp_path)
     monkeypatch.setattr(validate, "leer_config", lambda: config_valida(intervalo_minutos=0))
-    monkeypatch.setenv("TELEGRAM_TOKEN", "token-secreto")
+    monkeypatch.setenv("TELEGRAM_TOKEN", TOKEN)
     monkeypatch.setenv("TELEGRAM_CHAT_ID", "123")
 
     assert validate.comprobar_instalacion() is False
     assert "❌ intervalo_minutos debe estar entre 1 y 1440 (vale 0)" in caplog.text
-    assert "token-secreto" not in caplog.text
+    assert TOKEN not in caplog.text
 
 
 def test_comprobar_instalacion_correcta(monkeypatch, tmp_path, caplog):
     monkeypatch.setattr(validate, "RAIZ", tmp_path)
     monkeypatch.setattr(validate, "leer_config", config_valida)
-    monkeypatch.setenv("TELEGRAM_TOKEN", "token-secreto")
+    monkeypatch.setenv("TELEGRAM_TOKEN", TOKEN)
     monkeypatch.setenv("TELEGRAM_CHAT_ID", "123")
 
     with caplog.at_level(logging.INFO):
