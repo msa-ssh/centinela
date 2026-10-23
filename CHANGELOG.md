@@ -2,7 +2,7 @@
 
 Todos los cambios importantes de Centinela, de la versión más nueva a la más antigua. Las versiones siguen el [versionado semántico](https://semver.org/lang/es/): el tercer número cambia con los arreglos, el segundo con las funciones nuevas y el primero con los cambios que obligan a tocar la configuración.
 
-## [1.0.0] - sin publicar
+## [1.0.0] - 2026-10-23
 
 ### Añadido
 
