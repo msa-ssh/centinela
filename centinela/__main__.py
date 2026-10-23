@@ -17,6 +17,7 @@ from centinela.history import (
     guardar_recursos,
     guardar_resultados,
     marcar_informe,
+    resumen_recursos,
     ultimo_informe,
 )
 from centinela.report import formatear_informe, toca_informe
@@ -149,11 +150,13 @@ def probar_canales(canales):
 
 
 def enviar_informe(token, chat_id, ahora=None):
-    """Envía la disponibilidad de los últimos 7 días a los canales por defecto."""
+    """Envía la disponibilidad y los recursos de los últimos 7 días a los canales por defecto."""
     ahora = ahora or datetime.now()
     desde = ahora - timedelta(days=7)
-    texto = formatear_informe(disponibilidad(desde, ahora), desde, ahora)
     config = leer_config()
+    recursos = resumen_recursos(desde, ahora) if "servidor" in config else []
+    servidor = config.get("servidor", {}).get("nombre", "Servidor")
+    texto = formatear_informe(disponibilidad(desde, ahora), desde, ahora, recursos, servidor)
     return avisar(crear_canales(config, token, chat_id), destinos({}, config), texto)
 
 

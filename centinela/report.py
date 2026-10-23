@@ -1,5 +1,7 @@
-"""Informe semanal de Centinela: el porcentaje de disponibilidad de cada web."""
+"""Informe semanal de Centinela: disponibilidad de cada web y recursos del servidor."""
 from datetime import timedelta
+
+from centinela.rules import con_coma
 
 MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 UMBRAL_BUENO = 99
@@ -17,8 +19,8 @@ def porcentaje(buenas, total):
     return buenas * 1000 // total / 10
 
 
-def formatear_informe(filas, desde, hasta):
-    """Convierte las filas de disponibilidad() en el texto del informe."""
+def formatear_informe(filas, desde, hasta, recursos=(), servidor="Servidor"):
+    """Convierte las filas de disponibilidad() y resumen_recursos() en el texto del informe."""
     lineas = [f"📊 Informe semanal ({fecha_corta(desde)} – {fecha_corta(hasta)})"]
     if not filas:
         lineas.append("Sin datos en este periodo")
@@ -27,7 +29,22 @@ def formatear_informe(filas, desde, hasta):
         icono = "✅" if valor >= UMBRAL_BUENO else "❌"
         texto = f"{valor:g}".replace(".", ",")
         lineas.append(f"{icono} {nombre}: {texto} % ({buenas} de {total} rondas)")
+    if recursos:
+        lineas.extend(formatear_recursos(recursos, servidor))
     return "\n".join(lineas)
+
+
+def formatear_recursos(recursos, servidor):
+    """Devuelve las líneas del servidor: media, máximo y rondas por encima del límite."""
+    lineas = [f"🖥️ {servidor}"]
+    for etiqueta, _rondas, media, maximo, altas in recursos:
+        icono = "🟠" if altas else "✅"
+        linea = f"{icono} {etiqueta}: media {con_coma(round(media, 1))} %, máximo {con_coma(maximo)} %"
+        if altas:
+            palabra = "ronda" if altas == 1 else "rondas"
+            linea += f" ({altas} {palabra} por encima del límite)"
+        lineas.append(linea)
+    return lineas
 
 
 def cita_mas_reciente(ahora):
