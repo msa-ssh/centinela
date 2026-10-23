@@ -4,7 +4,7 @@
 
 Vigila tus webs y te avisa por Telegram, correo o Discord antes de que tus clientes noten que algo falla.
 
-Centinela revisa cada pocos minutos que tus webs respondan, que muestren lo que deben (por ejemplo, el botón "Añadir al carrito") y que su certificado HTTPS no esté a punto de caducar. También vigila el disco, la RAM y la carga del servidor donde se ejecuta. Solo te escribe cuando algo cambia: cuando una web cae, cuando se recupera y, si sigue caída, con un recordatorio cada pocas horas. Y cada lunes te manda un informe con el porcentaje de tiempo que cada web estuvo disponible. Cada web puede avisar a sus propios destinos, así que con un solo Centinela cada cliente recibe solo lo suyo, por el canal que prefiera.
+Centinela revisa cada pocos minutos que tus webs respondan, que muestren lo que deben (por ejemplo, el botón "Añadir al carrito") y que su certificado HTTPS no esté a punto de caducar. También vigila el disco, la RAM y la carga del servidor donde se ejecuta. Solo te escribe cuando algo cambia: cuando una web cae, cuando se recupera y, si sigue caída, con un recordatorio cada pocas horas. Y cada lunes te manda un informe con el porcentaje de tiempo que cada web estuvo disponible y cómo estuvieron el disco, la RAM y la carga del servidor durante la semana. Cada web puede avisar a sus propios destinos, así que con un solo Centinela cada cliente recibe solo lo suyo, por el canal que prefiera.
 
 ## Cómo se ve un aviso
 
@@ -21,6 +21,10 @@ Centinela revisa cada pocos minutos que tus webs respondan, que muestren lo que 
 📊 Informe semanal (8 oct – 15 oct)
 ✅ Blog: 100 % (2016 de 2016 rondas)
 ✅ Mi tienda: 99,6 % (2009 de 2016 rondas)
+🖥️ Servidor web
+✅ Disco /: media 46,2 %, máximo 48 %
+🟠 RAM: media 71,4 %, máximo 93,1 % (4 rondas por encima del límite)
+✅ Carga: media 8,3 %, máximo 57 %
 ```
 
 El porcentaje se redondea hacia abajo: una web con un solo fallo en la semana nunca aparece al 100 %.
@@ -101,7 +105,7 @@ SMTP_CLAVE=contraseña-de-aplicación
 | `dias_aviso_certificado` | Avisa si el certificado caduca en menos días |
 | `horas_entre_avisos_certificado` | Horas entre avisos del mismo certificado |
 | `horas_recordatorio_caida` | Horas entre recordatorios de una web caída (0 los desactiva) |
-| `dias_historial` | Días que se guardan en `historial.db` para el informe (90 si falta) |
+| `dias_historial` | Días que se guardan en `historial.db` (webs y recursos del servidor) para el informe (90 si falta) |
 
 Cada web es un bloque `[[sitio]]` con `nombre` y `url`. Con `texto`, además, la web cuenta como caída si responde pero su HTML no contiene ese texto (distingue mayúsculas; elige un texto que aparezca tal cual en el código fuente de la página):
 
@@ -131,7 +135,7 @@ carga_max = 100
 | `ram_max` | Porcentaje de RAM usada a partir del cual avisa (90 si falta) |
 | `carga_max` | Carga media de 5 minutos dividida entre los núcleos, en porcentaje (100 si falta) |
 
-Avisa al pasar el límite, recuerda cada `horas_recordatorio_caida` si sigue alto y avisa cuando vuelve a la normalidad. Cada revisión deja en el registro una línea como `🖥️ Servidor web: Disco / 46,5 %, RAM 40,9 %, Carga 6,1 %`.
+Avisa al pasar el límite, recuerda cada `horas_recordatorio_caida` si sigue alto y avisa cuando vuelve a la normalidad. Cada revisión deja en el registro una línea como `🖥️ Servidor web: Disco / 46,5 %, RAM 40,9 %, Carga 6,1 %` y guarda las medidas en `historial.db`. El informe semanal resume cada recurso: la media, el máximo y cuántas rondas pasó de su límite (🟠 si alguna lo pasó).
 
 ## Canales de aviso
 
@@ -192,9 +196,7 @@ pytest
 
 ## Hoja de ruta
 
-- Avisos por WhatsApp con la API oficial de WhatsApp Business.
 - Vigilar varios servidores desde un solo Centinela.
-- Recursos del servidor en el informe semanal.
 - Zona horaria por web, para vigilar a clientes de varios países.
 - Página de estado pública.
 
