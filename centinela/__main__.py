@@ -24,6 +24,7 @@ from centinela.report import formatear_informe, toca_informe
 from centinela.rules import con_coma, decidir_avisos, decidir_avisos_recurso
 from centinela.state import cargar_estado, guardar_estado
 from centinela.system import medir
+from centinela.validate import comprobar_instalacion
 
 log = logging.getLogger(__name__)
 
@@ -45,6 +46,9 @@ def main():
     else:
         manejador.setFormatter(logging.Formatter(formato))
     logging.basicConfig(level=logging.INFO, handlers=[manejador])
+    if "--comprobar" in sys.argv:
+        sys.exit(0 if comprobar_instalacion() else 1)
+
     token, chat_id = cargar_config()
     if "--prueba" in sys.argv:
         ok = probar_canales(crear_canales(leer_config(), token, chat_id))
